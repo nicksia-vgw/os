@@ -89,6 +89,17 @@ fn create_idt_descriptor() *IDTDescriptor {
     return idt_descriptor;
 }
 
+fn kb_isr() callconv(.Naked) noreturn {
+    asm volatile ("push %eax");
+    asm volatile ("inb $0x60, %al");
+    asm volatile ("movb %al, 0x0700000");
+    asm volatile ("movb $0x20, %al");
+    asm volatile ("outb %al, $0x20");
+    asm volatile ("pop %eax");
+
+    x86.iret();
+}
+
 fn dummy_isr() callconv(.Naked) noreturn {
     //println("got interrupt!", .{});
     x86.iret();
