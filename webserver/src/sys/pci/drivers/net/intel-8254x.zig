@@ -52,7 +52,8 @@ const NICDevice = struct {
 };
 
 var nic: *NICDevice = undefined;
-
+// https://www.intel.com/content/dam/doc/manual/pci-pci-x-family-gbe-controllers-software-dev-manual.pdf
+// 14.4 Receive Initialization
 pub fn initialize(device: *PCIDevice, busNumber: u5, deviceNumber: u8) void {
     nic.* = NICDevice.init(device, busNumber, deviceNumber);
 }
