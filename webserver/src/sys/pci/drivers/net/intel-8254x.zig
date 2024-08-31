@@ -26,19 +26,38 @@ const PCI_MMIO_OFFSET = 0x4;
 const BAR_EECD_OFFSET = 0x10;
 const BAR_EERD_OFFSET = 0x14;
 
+const NICDevice = struct {
+    mac: [6]u8,
+
+    fn init(device: *PCIDevice, busNumber: u5, deviceNumber: u8) NICDevice {
+        fprintln("id: {x}", .{device.device_id});
+        initializeBARs(device, busNumber, deviceNumber);
+        enablePCIBusMastering(busNumber, deviceNumber);
+        reset();
+
+        const mac = getMAC();
+        fprintln("found mac address: {x}:{x}:{x}:{x}:{x}:{x}", .{
+            mac[0],
+            mac[1],
+            mac[2],
+            mac[3],
+            mac[4],
+            mac[5],
+        });
+
+        return NICDevice{
+            .mac = mac,
+        };
+    }
+};
+
+var nic: *NICDevice = undefined;
+
 pub fn initialize(device: *PCIDevice, busNumber: u5, deviceNumber: u8) void {
-
-    fprintln("id: {x}", .{device.device_id});
-    initializeBARs(device, busNumber, deviceNumber);
-    enablePCIBusMastering(busNumber, deviceNumber);
-    reset();
-
-    _ = getMAC();
+    nic.* = NICDevice.init(device, busNumber, deviceNumber);
 }
 
-const MACAddress = []const u8;
-
-fn getMAC() MACAddress {
+fn getMAC() [6]u8 {
     const controlRegister: *volatile EEPROMControlRegister = @ptrFromInt(NIC_BASE_ADDRESS + BAR_EECD_OFFSET);
     const readRegister: *volatile EEPROMReadRegister = @ptrFromInt(NIC_BASE_ADDRESS + BAR_EERD_OFFSET);
 
@@ -48,14 +67,6 @@ fn getMAC() MACAddress {
     controlRegister.enableRead();
     controlRegister.lock();
     const mac = readRegister.readMAC();
-    fprintln("found mac address: {x}:{x}:{x}:{x}:{x}:{x}", .{
-        mac[0],
-        mac[1],
-        mac[2],
-        mac[3],
-        mac[4],
-        mac[5],
-    });
     controlRegister.unlock();
     return mac;
 }
@@ -195,7 +206,7 @@ pub const EEPROMReadRegister = packed struct {
         };
     }
 
-    pub fn readMAC(self: * volatile EEPROMReadRegister) []const u8 {
+    pub fn readMAC(self: * volatile EEPROMReadRegister) [6]u8 {
         var macData = [_]u8{0} ** 6;
         for (0x0..0x3) |index| {
             const readCommand = std.mem.asBytes(&buildReadCommand(@truncate(index)));
@@ -225,7 +236,7 @@ pub const EEPROMReadRegister = packed struct {
 
         }
 
-        return &macData;
+        return macData;
     }
 };
 
